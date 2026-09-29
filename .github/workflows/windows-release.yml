@@ -1,0 +1,102 @@
+# Baut Setup.exe + Portable-ZIP auf einem Windows-Runner.
+#  - manuell:      Actions → "Windows build" → Run workflow  (Ergebnis als Artefakt)
+#  - Veröffentlichen: git tag v1.0.0 && git push origin v1.0.0  (Ergebnis als GitHub-Release)
+#    oder: Run workflow mit "release" = true → Tag v<APP_VERSION> und Release werden angelegt
+name: Windows build
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "GitHub-Release v<APP_VERSION> erstellen (nach grünen Tests)"
+        type: boolean
+        default: false
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller pytest-timeout
+
+      - name: Tests
+        shell: pwsh
+        timeout-minutes: 25
+        env:
+          QT_QPA_PLATFORM: offscreen
+          PYTHONFAULTHANDLER: "1"
+        run: python -m pytest tests -v --timeout=600 --durations=25 --ignore=tests/test_sandbox.py
+
+      - name: Sandbox tests (Low IL, Job Object, AppContainer)
+        shell: pwsh
+        timeout-minutes: 25
+        env:
+          PYTHONFAULTHANDLER: "1"
+        run: python -m pytest tests/test_sandbox.py -v --timeout=900 --durations=0
+
+      - name: Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+
+      - name: Build Setup + Portable
+        shell: pwsh
+        run: ./scripts/build_windows.ps1 -SkipInstall
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SENTINEL-F-windows
+          path: |
+            dist/SENTINEL-F-*-Setup-win64.exe
+            dist/SENTINEL-F-*-Portable-win64.zip
+            dist/SHA256SUMS.txt
+
+      - name: Version
+        id: ver
+        shell: pwsh
+        run: |
+          $v = (Select-String -Path config\settings.py -Pattern 'APP_VERSION\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
+          "tag=v$v" >> $env:GITHUB_OUTPUT
+
+      - name: GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || steps.ver.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: SENTINEL-F ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || steps.ver.outputs.tag }}
+          generate_release_notes: true
+          body: |
+            ## 🛰️ SENTINEL-F · File-forensic intelligence suite by DGKN@Labs
+
+            | Download | For |
+            |---|---|
+            | **SENTINEL-F-…-Setup-win64.exe** | Normal install: Start menu, optional desktop icon, right-click *Analyze with SENTINEL-F*, uninstaller. No admin rights needed. |
+            | **SENTINEL-F-…-Portable-win64.zip** | Unzip and run `DGKN-FileForensic.exe`. All data stays in `UserData\` next to the EXE (USB stick). |
+
+            Windows 10/11, 64-bit. No Python needed. Check your download against `SHA256SUMS.txt`.
+            The builds are not code-signed yet, so SmartScreen may warn on first start: *More info → Run anyway*.
+
+            Built and tested by GitHub Actions on Windows: full test suite including the sandbox probes (AppContainer without network, Job Object limits).
+
+            GPL-3.0-or-later with attribution (see `NOTICE`) · Developed by DGKN@Labs with AI assistance.
+          files: |
+            dist/SENTINEL-F-*-Setup-win64.exe
+            dist/SENTINEL-F-*-Portable-win64.zip
+            dist/SHA256SUMS.txt

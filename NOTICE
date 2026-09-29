@@ -1,0 +1,73 @@
+SENTINEL-F · DGKN@Labs-FileForensic
+Copyright (C) 2026 DGKN@Labs
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option)
+any later version, together with the additional terms below. It is
+distributed WITHOUT ANY WARRANTY. See the file LICENSE for the full text.
+
+
+ADDITIONAL TERMS (GNU GPL version 3, section 7)
+===============================================
+
+The following additional terms apply to this work under section 7 of the
+GNU General Public License version 3. They are permitted there as
+sections 7(b) and 7(c).
+
+1. Author attribution (section 7(b)).
+   Every copy, modified version or work based on SENTINEL-F, in source or
+   object form, must preserve the attribution "DGKN@Labs" as the original
+   author:
+     a) in this NOTICE file, which must be distributed with the work;
+     b) in the copyright notices in the source files, where present;
+     c) in the program's user interface, where the original shows it (the
+        sidebar footer and the "About SENTINEL-F" dialog), in a form at
+        least as visible as the original. A modified version may add its
+        own name, e.g. "based on SENTINEL-F by DGKN@Labs".
+
+2. No misrepresentation of origin (section 7(c)).
+   A modified version must be clearly marked as modified, must not be
+   presented as the original SENTINEL-F by DGKN@Labs, and must not claim
+   that DGKN@Labs endorses it.
+
+These terms only protect the attribution. They do not restrict how the
+program may be used.
+
+
+HOW THIS SOFTWARE WAS MADE
+==========================
+
+SENTINEL-F was developed by DGKN@Labs with the help of AI coding assistants
+(including Claude Code by Anthropic). The idea, requirements, architecture,
+review, testing and parts of the source code are the work of DGKN@Labs; other
+parts were generated with AI assistance under DGKN@Labs' direction and then
+reviewed, tested and integrated by DGKN@Labs. The development history is
+kept private; each public release is published as a single commit.
+
+
+INTENDED USE
+============
+
+SENTINEL-F is built for security testers, forensic analysts, incident
+responders and education. Use it only on files and systems you are
+authorised to examine. Heuristic scores are indicators, not proof; verify
+critical findings manually. This section is a statement of purpose, not an
+additional license restriction.
+
+
+-----------------------------------------------------------------------------
+DEUTSCHE ZUSAMMENFASSUNG (nicht bindend, maßgeblich ist der englische Text)
+
+- Lizenz: GNU GPL v3 oder später, plus die Zusatzbedingungen oben.
+- Namensnennung Pflicht: „DGKN@Labs“ muss als ursprünglicher Urheber in
+  dieser NOTICE-Datei, in den Quelltext-Hinweisen und in der Oberfläche
+  (Seitenleiste, „Über SENTINEL-F“) sichtbar bleiben, auch bei veränderten
+  Versionen („basiert auf SENTINEL-F von DGKN@Labs“).
+- Veränderte Versionen müssen als verändert gekennzeichnet sein und dürfen
+  sich nicht als Original von DGKN@Labs ausgeben.
+- Entstehung: Entwickelt von DGKN@Labs mit Unterstützung von KI-Werkzeugen
+  (u. a. Claude Code). Idee, Anforderungen, Architektur, Prüfung, Tests und
+  eigene Code-Anteile stammen von DGKN@Labs.
+- Gedacht für Sicherheitstester, Forensik, Incident Response und Lehre; nur
+  auf Dateien und Systemen anwenden, für die man berechtigt ist.

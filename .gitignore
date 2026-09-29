@@ -1,0 +1,14 @@
+# Laufzeitdaten (enthalten Daten vom eigenen System)
+.cache/
+reports/
+data/
+# Lokale Schlüssel
+config/local_secrets.py
+# Python / Build
+__pycache__/
+*.pyc
+.pytest_cache/
+build/
+dist/
+*.log
+desktop.ini

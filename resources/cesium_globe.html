@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>SENTINEL GLOBE</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    background: #05070a; overflow: hidden;
+    font-family: 'JetBrains Mono', Consolas, monospace;
+    color: #35ff8a;
+  }
+  #cesiumContainer {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: radial-gradient(ellipse at center, #0d1218 0%, #05070a 70%);
+  }
+  .cesium-viewer-toolbar,
+  .cesium-viewer-animationContainer,
+  .cesium-viewer-timelineContainer,
+  .cesium-viewer-bottom,
+  .cesium-viewer-fullscreenContainer,
+  .cesium-viewer-geocoderContainer,
+  .cesium-viewer-navigationHelpButtonContainer { display: none !important; }
+
+  .cesium-widget-credits { display: none !important; }
+
+  #overlay {
+    position: absolute;
+    top: 8px; left: 10px;
+    font-size: 10px;
+    color: #35ff8a;
+    letter-spacing: 1.5px;
+    opacity: 0.75;
+    pointer-events: none;
+    z-index: 10;
+    text-shadow: 0 0 6px rgba(53,255,138,0.6);
+  }
+  #overlay .label { color: #4de6ff; opacity: 0.8; }
+  #coords {
+    position: absolute;
+    bottom: 8px; right: 10px;
+    font-size: 9px;
+    color: #7a8a98;
+    letter-spacing: 1px;
+    opacity: 0.7;
+    z-index: 10;
+  }
+  #status-dot {
+    display: inline-block; width: 6px; height: 6px;
+    background: #35ff8a; border-radius: 50%;
+    box-shadow: 0 0 8px #35ff8a;
+    animation: pulse 1.8s infinite;
+    margin-right: 6px;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%     { opacity: 0.4; transform: scale(0.8); }
+  }
+  #reticle {
+    position: absolute; top: 50%; left: 50%;
+    width: 140px; height: 140px;
+    transform: translate(-50%, -50%);
+    pointer-events: none; z-index: 5;
+    opacity: 0.15;
+  }
+</style>
+</head>
+<body>
+<div id="cesiumContainer"></div>
+<div id="overlay">
+  <span id="status-dot"></span><span class="label">SENTINEL</span> · GEO-TRACK · LIVE
+</div>
+<div id="coords">LON <span id="lon">0.00</span>° / LAT <span id="lat">0.00</span>°</div>
+<svg id="reticle" viewBox="0 0 100 100">
+  <circle cx="50" cy="50" r="48" fill="none" stroke="#35ff8a" stroke-width="0.5"/>
+  <circle cx="50" cy="50" r="35" fill="none" stroke="#35ff8a" stroke-width="0.3"/>
+  <line x1="50" y1="0"  x2="50" y2="10"  stroke="#35ff8a" stroke-width="0.5"/>
+  <line x1="50" y1="90" x2="50" y2="100" stroke="#35ff8a" stroke-width="0.5"/>
+  <line x1="0"  y1="50" x2="10" y2="50"  stroke="#35ff8a" stroke-width="0.5"/>
+  <line x1="90" y1="50" x2="100" y2="50" stroke="#35ff8a" stroke-width="0.5"/>
+</svg>
+
+<script src="https://cesium.com/downloads/cesiumjs/releases/1.115/Build/Cesium/Cesium.js"></script>
+<link href="https://cesium.com/downloads/cesiumjs/releases/1.115/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+
+<script>
+  // Token injected by host at load
+  Cesium.Ion.defaultAccessToken = "__CESIUM_TOKEN__";
+
+  // Create viewer WITHOUT default imagery — we will attach our own layer
+  // manually. This avoids Ion asset calls entirely (which fail silently
+  // and leave a blue globe when the token lacks world-imagery access).
+  const viewer = new Cesium.Viewer("cesiumContainer", {
+    animation: false,
+    baseLayerPicker: false,
+    fullscreenButton: false,
+    geocoder: false,
+    homeButton: false,
+    infoBox: false,
+    sceneModePicker: false,
+    selectionIndicator: false,
+    timeline: false,
+    navigationHelpButton: false,
+    scene3DOnly: true,
+    creditContainer: document.createElement("div"),
+    baseLayer: false,                       // Cesium ≥1.104: disable default
+    imageryProvider: false,                 // Cesium <1.104: disable default
+    skyBox: false,                          // we tint our own atmosphere
+  });
+
+  // ── Attach our own imagery layers ──────────────────────────────────────
+  const maptilerKey = "__MAPTILER_KEY__";
+  const layers = viewer.imageryLayers;
+
+  function addOSM() {
+    const osm = new Cesium.UrlTemplateImageryProvider({
+      url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      tilingScheme: new Cesium.WebMercatorTilingScheme(),
+      maximumLevel: 19,
+      credit: ""
+    });
+    layers.addImageryProvider(osm);
+    return osm;
+  }
+
+  let primary = null;
+  if (maptilerKey && maptilerKey.length > 4 && maptilerKey.indexOf("__") === -1) {
+    primary = new Cesium.UrlTemplateImageryProvider({
+      url: "https://api.maptiler.com/maps/hybrid/{z}/{x}/{y}.jpg?key=" + maptilerKey,
+      tilingScheme: new Cesium.WebMercatorTilingScheme(),
+      maximumLevel: 18,
+      credit: ""
+    });
+    layers.addImageryProvider(primary);
+
+    // If MapTiler fails on the first tiles, drop it and add OSM as base.
+    let mapTilerFailed = false;
+    primary.errorEvent.addEventListener(function () {
+      if (mapTilerFailed) return;
+      mapTilerFailed = true;
+      try {
+        layers.removeAll();
+        addOSM();
+      } catch (e) {}
+    });
+  } else {
+    addOSM();
+  }
+
+  const scene = viewer.scene;
+  scene.globe.enableLighting = true;
+  scene.globe.showGroundAtmosphere = true;
+  scene.skyAtmosphere.show = true;
+  scene.fog.enabled = true;
+  scene.fog.density = 0.0002;
+  scene.globe.baseColor = Cesium.Color.fromCssColorString("#05070a");
+
+  // subtle green tint through atmosphere
+  scene.skyAtmosphere.hueShift = 0.35;
+  scene.skyAtmosphere.saturationShift = -0.3;
+  scene.skyAtmosphere.brightnessShift = -0.1;
+
+  // Start camera high above
+  viewer.camera.setView({
+    destination: Cesium.Cartesian3.fromDegrees(10.0, 15.0, 22000000.0),
+  });
+
+  // ── Auto-rotation ──────────────────────────────────────────────────────────
+  let rotating = true;
+  const rotationSpeed = 0.00035; // radians per tick
+  const coordsLon = document.getElementById("lon");
+  const coordsLat = document.getElementById("lat");
+
+  scene.postRender.addEventListener(function () {
+    if (rotating) {
+      viewer.camera.rotate(Cesium.Cartesian3.UNIT_Z, -rotationSpeed);
+    }
+    // Update coords display
+    try {
+      const c = viewer.camera.positionCartographic;
+      if (c) {
+        coordsLon.textContent = Cesium.Math.toDegrees(c.longitude).toFixed(2);
+        coordsLat.textContent = Cesium.Math.toDegrees(c.latitude).toFixed(2);
+      }
+    } catch (e) {}
+  });
+
+  // Pause rotation on user interaction, resume after 4s idle
+  let resumeTimer = null;
+  function pauseRotation() {
+    rotating = false;
+    if (resumeTimer) clearTimeout(resumeTimer);
+    resumeTimer = setTimeout(() => { rotating = true; }, 4000);
+  }
+  const canvas = viewer.scene.canvas;
+  canvas.addEventListener("mousedown", pauseRotation);
+  canvas.addEventListener("wheel",     pauseRotation);
+
+  // ── Public API for Qt bridge ───────────────────────────────────────────────
+  window.pinLocation = function (lon, lat, label) {
+    viewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(lon, lat),
+      point: {
+        pixelSize: 10,
+        color: Cesium.Color.fromCssColorString("#35ff8a"),
+        outlineColor: Cesium.Color.fromCssColorString("#4de6ff"),
+        outlineWidth: 2,
+      },
+      label: {
+        text: label || "TARGET",
+        font: "10px JetBrains Mono",
+        fillColor: Cesium.Color.fromCssColorString("#4de6ff"),
+        outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 2,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+        pixelOffset: new Cesium.Cartesian2(0, -14),
+      },
+    });
+  };
+
+  // Route: [{lon, lat, label, flag}] – Linie + Punkte, unmögliche Etappen rot
+  let routeEntities = [];
+  window.drawRoute = function (pts) {
+    routeEntities.forEach(function (e) { viewer.entities.remove(e); });
+    routeEntities = [];
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i];
+      routeEntities.push(viewer.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(p.lon, p.lat),
+        point: { pixelSize: 9, color: Cesium.Color.fromCssColorString("#35ff8a"),
+                 outlineColor: Cesium.Color.BLACK, outlineWidth: 1 },
+        label: { text: String(i + 1) + " · " + String(p.label || "").slice(0, 24), font: "10px JetBrains Mono",
+                 fillColor: Cesium.Color.fromCssColorString("#c9d4dc"), outlineColor: Cesium.Color.BLACK,
+                 outlineWidth: 2, style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+                 pixelOffset: new Cesium.Cartesian2(0, -14) },
+      }));
+      if (i > 0) {
+        const q = pts[i - 1];
+        routeEntities.push(viewer.entities.add({
+          polyline: { positions: Cesium.Cartesian3.fromDegreesArray([q.lon, q.lat, p.lon, p.lat]),
+                      width: p.flag === "impossible" ? 4 : 2, arcType: Cesium.ArcType.GEODESIC,
+                      material: Cesium.Color.fromCssColorString(p.flag === "impossible" ? "#ff2a3f" :
+                                                                p.flag === "flight" ? "#ffb648" : "#4de6ff") },
+        }));
+      }
+    }
+    if (routeEntities.length) { viewer.flyTo(routeEntities, { duration: 2.0 }); pauseRotation(); }
+  };
+
+  window.flyTo = function (lon, lat, height) {
+    viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(lon, lat, height || 1500000),
+      duration: 2.0,
+    });
+    pauseRotation();
+  };
+</script>
+</body>
+</html>

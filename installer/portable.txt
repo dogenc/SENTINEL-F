@@ -1,0 +1,28 @@
+SENTINEL-F Portable Edition
+===========================
+
+Diese Datei schaltet den Portable-Modus ein. Solange sie neben
+DGKN-FileForensic.exe liegt, speichert SENTINEL-F alles im Unterordner
+UserData\ dieses Ordners:
+
+  UserData\data\       Analyse-Verlauf, Fälle, Einstellungen, Signaturschlüssel
+  UserData\reports\    exportierte Berichte
+  UserData\.cache\     Zwischenspeicher (Globus, Vorschaubilder)
+
+Nichts landet in AppData oder in der Registry. Der Ordner kann auf einen
+USB-Stick kopiert werden.
+
+Schlüssel (optional, nur für den 3-D-Globus bzw. die Hash-Abfrage):
+UserData\local_secrets.py anlegen, Vorlage: config/local_secrets.example.py
+im Quellcode (https://github.com/dogenc/SENTINEL-F).
+
+Hinweis: Die Sandbox legt ihre kurzlebigen Arbeitsordner immer unter
+%LOCALAPPDATA%Low\DGKN_Sentinel\jobs an. Das verlangt Windows so, weil nur
+dort ein Prozess mit niedriger Integritätsstufe schreiben darf.
+
+Wird diese Datei gelöscht, verhält sich die EXE wie die installierte
+Version und speichert unter %LOCALAPPDATA%\DGKN-FileForensic.
+
+-----------------------------------------------------------------------------
+This file enables portable mode: all user data is stored in UserData\ next
+to the EXE. Delete it to use %LOCALAPPDATA%\DGKN-FileForensic instead.
